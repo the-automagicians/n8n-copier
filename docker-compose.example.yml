@@ -1,0 +1,25 @@
+version: '3.8'
+
+services:
+  n8n-copier:
+    image: n8n-copier:latest
+    container_name: n8n-copier
+    ports:
+      - "8000:8000"
+    environment:
+      # n8n Source Instance Configuration
+      SOURCE_N8N_URL: "https://your-source-n8n-instance.com"
+      SOURCE_API_KEY: "your-source-api-key-here"
+      
+      # n8n Destination Instance Configuration  
+      DESTINATION_N8N_URL: "https://your-destination-n8n-instance.com"
+      DESTINATION_API_KEY: "your-destination-api-key-here"
+      
+      # RESEND email key
+      RESEND_API_KEY: "your-resend-api-key-here"
+    restart: unless-stopped
+
+# To use this file:
+# 1. Copy this file to docker-compose.yml
+# 2. Replace the placeholder values with your actual environment variables
+# 3. Run: docker-compose up -d

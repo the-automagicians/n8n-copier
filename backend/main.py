@@ -1,5 +1,6 @@
 import os
 import requests
+import resend
 from datetime import datetime
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import FileResponse
@@ -11,6 +12,9 @@ SOURCE_N8N_URL = os.getenv("SOURCE_N8N_URL")
 SOURCE_API_KEY = os.getenv("SOURCE_API_KEY")
 DESTINATION_N8N_URL = os.getenv("DESTINATION_N8N_URL")
 DESTINATION_API_KEY = os.getenv("DESTINATION_API_KEY")
+RESEND_API_KEY = os.getenv("RESEND_API_KEY")
+
+resend.api_key = RESEND_API_KEY
 
 if not all([SOURCE_N8N_URL, SOURCE_API_KEY, DESTINATION_N8N_URL, DESTINATION_API_KEY]):
     raise ValueError("One or more environment variables are missing. Please check your .env file.")
@@ -125,6 +129,71 @@ def check_destination_workflow(workflow_id: str):
         raise HTTPException(status_code=500, detail=f"Error checking destination workflow: {e}")
 
 
+def send_deployment_email(workflow_name: str, action: str, reason: str, destination_url: str, timestamp: str):
+    """
+    Send deployment notification email using Resend
+    """
+    try:
+        action_text = "updated" if action == "updated" else "created"
+        action_color = "#ff9800" if action == "updated" else "#4caf50"
+        
+        html_content = f"""
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <style>
+                body {{ font-family: Arial, sans-serif; line-height: 1.6; color: #333; }}
+                .container {{ max-width: 600px; margin: 0 auto; padding: 20px; }}
+                .header {{ background: {action_color}; color: white; padding: 20px; border-radius: 5px 5px 0 0; }}
+                .content {{ background: #f9f9f9; padding: 20px; border-radius: 0 0 5px 5px; }}
+                .info-box {{ background: white; padding: 15px; margin: 10px 0; border-left: 4px solid {action_color}; border-radius: 3px; }}
+                .footer {{ margin-top: 20px; padding-top: 20px; border-top: 1px solid #ddd; font-size: 12px; color: #666; }}
+            </style>
+        </head>
+        <body>
+            <div class="container">
+                <div class="header">
+                    <h2 style="margin: 0;">n8n Workflow Deployment Notification</h2>
+                </div>
+                <div class="content">
+                    <p>A workflow has been successfully <strong>{action_text}</strong> on the destination server.</p>
+                    
+                    <div class="info-box">
+                        <p style="margin: 5px 0;"><strong>Workflow Name:</strong> {workflow_name}</p>
+                        <p style="margin: 5px 0;"><strong>Action:</strong> {action_text.capitalize()}</p>
+                        <p style="margin: 5px 0;"><strong>Destination:</strong> {destination_url}</p>
+                        <p style="margin: 5px 0;"><strong>Deployment Time:</strong> {timestamp}</p>
+                    </div>
+                    
+                    <div class="info-box">
+                        <p style="margin: 5px 0;"><strong>Deployment Reason:</strong></p>
+                        <p style="margin: 10px 0; padding: 10px; background: #fff3cd; border-radius: 3px;">{reason}</p>
+                    </div>
+                    
+                    <div class="footer">
+                        <p>This is an automated notification from the n8n Workflow Copier.</p>
+                    </div>
+                </div>
+            </div>
+        </body>
+        </html>
+        """
+        
+        params: resend.Emails.SendParams = {
+            "from": "noreply@imagoplatform.ai",
+            "to": ["patrik@automagicians.io", "magnus@automagicians.io"],
+            "subject": f"n8n Workflow Deployed: {workflow_name}",
+            "html": html_content,
+        }
+        
+        email = resend.Emails.send(params)
+        return email
+    except Exception as e:
+        # Log the error but don't fail the deployment
+        print(f"Failed to send email notification: {e}")
+        return None
+
+
 @app.post("/api/copy-workflow")
 async def copy_workflow(request: Request):
     try:
@@ -175,6 +244,17 @@ async def copy_workflow(request: Request):
         response.raise_for_status()
         
         result = response.json()
+        
+        # Send email notification
+        workflow_name = result.get("name", "Unknown Workflow")
+        send_deployment_email(
+            workflow_name=workflow_name,
+            action=action,
+            reason=reason,
+            destination_url=DESTINATION_N8N_URL,
+            timestamp=timestamp
+        )
+        
         return {
             "success": True,
             "message": f"Workflow {action} successfully",
