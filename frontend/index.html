@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>n8n Workflow Copier</title>
+    <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+    <div class="container">
+        <h1>n8n Workflow Copier</h1>
+        
+        <!-- Initial instruction - will be hidden after clicking -->
+        <div id="initial-instruction">
+            <p>Click the button to connect to your source n8n instance and fetch the available workflows.</p>
+            <button id="fetch-workflows-btn">Connect & Fetch Workflows</button>
+        </div>
+        
+        <div id="loader" class="loader" style="display: none;"></div>
+        
+        <!-- Main content area -->
+        <div id="workflow-list-container">
+            <!-- Workflow list will be dynamically inserted here -->
+        </div>
+        
+        <p id="error-message" class="error"></p>
+    </div>
+
+    <script src="/script.js"></script>
+</body>
+</html>
